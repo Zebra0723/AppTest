@@ -9,7 +9,7 @@
     "selftest": "node scripts/selftest.js"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^131.0.0",
+    "@sparticuz/chromium-min": "^131.0.0",
     "openai": "^4.67.0",
     "puppeteer-core": "^23.11.1"
   }
