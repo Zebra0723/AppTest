@@ -7,7 +7,8 @@ opens the page in a real headless Chromium (running in a Vercel serverless
 function), **always** checks loading and the common bugs, then **OpenAI** reviews
 the actual screenshots against the specifics you listed. Results come back on a
 minimalistic, sunset-themed dashboard: a health score, per-category scores,
-screenshots, a feature checklist and detailed drill-downs.
+screenshots, a feature checklist and detailed drill-downs. It has a **light and
+dark theme** (light by default) — toggle with the 🌙/🌞 button, remembered per browser.
 
 ---
 
@@ -49,6 +50,28 @@ OpenAI — all in one request.
 three tiers", …) is matched on the page, and the OpenAI review looks at the
 screenshots to give a per-specific verdict (present / partial / missing / broken)
 and flag visual bugs a DOM scan can't see.
+
+## Testing sites that need a login
+
+Tick **“🔒 This site needs a login”** and give the bot an email/username and
+password (use a throwaway test account). It navigates to the login page, fills
+the form, submits, and then runs the whole audit as the **signed-in** user, so
+your app's real pages are what get tested — not the login screen.
+
+- **Login page URL** is optional; it defaults to the deployment URL. Set it if
+  login lives at a separate path (e.g. `…/login`).
+- Fields are **auto-detected** for common forms. If yours is unusual, open
+  **Advanced** and give CSS selectors for the username field, password field
+  and submit button. Simple two-step ("enter email → Next → password") flows are
+  handled automatically. Captchas and 2FA are not.
+- The result shows a **login status banner** so you know whether the bot got in.
+- Credentials are sent only to your own serverless function to sign in for that
+  one run — never stored or logged.
+
+Two separate "logins" to be aware of: your **app's** login (above) and
+**Vercel's deployment protection** (a Vercel SSO/password wall on Preview
+deployments). The bot can't pass the latter — turn it off for the deployment
+under test (Project → Settings → Deployment Protection) or test the public URL.
 
 ---
 

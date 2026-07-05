@@ -43,8 +43,25 @@ export default async function handler(req, res) {
 
   const settleMs = clamp(parseInt(body.settleMs, 10) || 2500, 500, 8000);
 
+  // Optional automated form login.
+  let auth = null;
+  const a = body.auth;
+  if (a && typeof a === 'object' && a.password && (a.username || a.userSelector)) {
+    let loginUrl = a.loginUrl ? normalizeUrl(a.loginUrl) : url;
+    const lg = guardUrl(loginUrl);
+    if (!lg.ok) { res.status(400).json({ error: `Login URL: ${lg.reason}` }); return; }
+    auth = {
+      loginUrl,
+      username: String(a.username || ''),
+      password: String(a.password || ''),
+      userSelector: a.userSelector ? String(a.userSelector) : null,
+      passSelector: a.passSelector ? String(a.passSelector) : null,
+      submitSelector: a.submitSelector ? String(a.submitSelector) : null,
+    };
+  }
+
   try {
-    const audit = await runAudit({ url, features, viewports, waitExtraMs: settleMs });
+    const audit = await runAudit({ url, features, viewports, waitExtraMs: settleMs, auth });
     const report = grade(audit);
 
     let ai = { available: false, reason: 'AI review not run.' };
@@ -69,6 +86,7 @@ export default async function handler(req, res) {
       features: audit.features,
       metrics: audit.metrics,
       reachable: audit.reachable,
+      login: audit.login,
       error: audit.error,
       raw: { console: audit.console, page_errors: audit.page_errors, network: audit.network },
     });
