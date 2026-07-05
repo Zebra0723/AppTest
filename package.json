@@ -8,8 +8,11 @@
     "dev": "node scripts/dev-server.js",
     "selftest": "node scripts/selftest.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
-    "@sparticuz/chromium-min": "^131.0.0",
+    "@sparticuz/chromium": "^131.0.0",
     "openai": "^4.67.0",
     "puppeteer-core": "^23.11.1"
   }
