@@ -79,16 +79,37 @@ under test (Project → Settings → Deployment Protection) or test the public U
 
 1. Import this repo into Vercel (no framework preset needed — it's detected as
    static files + a Node function).
-2. Add environment variables under **Project → Settings → Environment Variables**:
+2. **Set the Node.js version to 20.x.** ⚠️ This is required. Vercel's Node **22.x**
+   runtime is missing the system libraries Chromium needs (`libnss3.so` /
+   `libnspr4.so`), so the browser fails to launch on 22. `package.json` pins
+   `engines.node: "20.x"`, and you can also set it in **Project → Settings →
+   Build and Deployment → Node.js Version → 20.x**.
+3. Add environment variables under **Project → Settings → Environment Variables**:
    - `OPENAI_API_KEY` — **required for the AI review** (the auto checks run without it).
    - `OPENAI_MODEL` — *optional*, defaults to `gpt-4o` (any vision-capable model, e.g. `gpt-4o-mini`).
-3. Deploy. Open the site, paste a deployment URL, describe what to watch for, run.
+4. Deploy. The footer shows `VercelCheck v<x> · <commit> · node v<XX>` — confirm it
+   reads **`node v20.x`**. Then paste a deployment URL, describe what to watch for, run.
 
 `vercel.json` gives the function `maxDuration: 60` so a full audit + AI review
 fits comfortably.
 
 > The auto checks work with **no API key** — the AI review is the part that needs
 > `OPENAI_API_KEY`. If it's missing, the dashboard just says the AI review wasn't run.
+
+### Bulletproof option: a hosted browser (no Chromium on Vercel)
+
+If you'd rather not depend on Vercel's runtime at all, point the bot at a hosted
+Chrome. Set **one** env var and the bot connects over WebSocket instead of
+launching its own Chromium — no `libnss3`/runtime issues possible:
+
+```
+BROWSER_WS_ENDPOINT = wss://production-sfo.browserless.io?token=YOUR_TOKEN
+# or Browserbase:
+BROWSER_WS_ENDPOINT = wss://connect.browserbase.com?apiKey=YOUR_KEY
+```
+
+Both services have free tiers. When `BROWSER_WS_ENDPOINT` is set it takes priority
+over the bundled Chromium, and the Node version no longer matters.
 
 ---
 
