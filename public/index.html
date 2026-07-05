@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VercelCheck — deployment tester</title>
+<meta name="description" content="Point it at any Vercel deployment, tell it what to watch for, and it hunts for loading, layout and feature bugs — with a real browser and an AI review." />
+<style>
+  :root{
+    --bg-1:#1c0a1f; --bg-2:#3a0f24; --bg-3:#7d1e22;
+    --sun-1:#ffd36e; --sun-2:#ff8a3d; --sun-3:#ff4d4d;
+    --accent:#ff6b3d;
+    --ink:#fdeee6; --muted:#e0a892; --faint:#c98d7e;
+    --card:rgba(38,16,24,.55); --card-2:rgba(52,22,30,.6);
+    --line:rgba(255,150,100,.16); --line-2:rgba(255,150,100,.10);
+    --pass:#48d597; --warn:#ffb038; --fail:#ff6363; --info:#c79a8e;
+    --shadow:0 20px 60px -20px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    color:var(--ink); min-height:100vh; position:relative; overflow-x:hidden;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(255,180,90,.28), transparent 45%),
+      radial-gradient(90% 60% at 80% 10%, rgba(255,90,90,.20), transparent 50%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 42%, var(--bg-3) 100%);
+    background-attachment:fixed;
+  }
+  /* faint sun disc */
+  body::before{
+    content:""; position:fixed; top:-120px; left:50%; transform:translateX(-50%);
+    width:520px; height:520px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,210,120,.55), rgba(255,120,60,.15) 55%, transparent 70%);
+    filter:blur(6px); z-index:0; pointer-events:none;
+  }
+  .wrap{position:relative; z-index:1; max-width:960px; margin:0 auto; padding:38px 20px 90px}
+
+  /* Header */
+  .brand{display:flex; align-items:center; gap:14px; margin-bottom:6px}
+  .logo{
+    width:44px;height:44px;border-radius:14px;flex:0 0 auto;
+    background:conic-gradient(from 210deg, var(--sun-1), var(--sun-2), var(--sun-3), var(--sun-1));
+    box-shadow:0 8px 26px rgba(255,110,60,.5), inset 0 0 12px rgba(255,255,255,.25);
+  }
+  h1.title{
+    font-size:2rem; font-weight:800; letter-spacing:-.02em; margin:0; line-height:1;
+    background:linear-gradient(92deg,#ffe1a8,#ff9d54 45%,#ff5f5f);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .tagline{color:var(--muted); font-size:1rem; margin:12px 0 26px; max-width:640px}
+
+  /* Cards */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:22px; box-shadow:var(--shadow); backdrop-filter:blur(10px);
+  }
+  .card + .card, .section{margin-top:20px}
+
+  label.fld{display:block; font-weight:650; font-size:.9rem; margin:2px 0 8px; color:var(--ink)}
+  .hint{color:var(--faint); font-size:.82rem; margin-top:7px; line-height:1.45}
+  input[type=text], textarea{
+    width:100%; background:rgba(20,8,12,.5); color:var(--ink);
+    border:1px solid var(--line); border-radius:12px; padding:13px 14px;
+    font-size:.98rem; font-family:inherit; outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  input[type=text]::placeholder, textarea::placeholder{color:#b07b6d}
+  input[type=text]:focus, textarea:focus{
+    border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,107,61,.22);
+  }
+  textarea{min-height:128px; resize:vertical; line-height:1.5}
+
+  .row{display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-top:18px}
+  .row > div{flex:1; min-width:200px}
+
+  /* Viewport chips */
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{
+    cursor:pointer; user-select:none; padding:8px 14px; border-radius:999px; font-size:.85rem; font-weight:600;
+    border:1px solid var(--line); color:var(--muted); background:rgba(20,8,12,.35); transition:all .15s;
+  }
+  .chip.on{
+    color:#2a0f0a; border-color:transparent;
+    background:linear-gradient(135deg,var(--sun-1),var(--sun-2)); box-shadow:0 6px 16px rgba(255,140,60,.35);
+  }
+
+  /* Run button */
+  .run{
+    margin-top:22px; width:100%; border:none; cursor:pointer; border-radius:14px;
+    padding:15px 20px; font-size:1.05rem; font-weight:750; color:#2a0d08; letter-spacing:.01em;
+    background:linear-gradient(120deg,var(--sun-1),var(--sun-2) 45%,var(--sun-3));
+    box-shadow:0 12px 30px -8px rgba(255,90,60,.7); transition:transform .12s, filter .12s, opacity .12s;
+  }
+  .run:hover{transform:translateY(-1px); filter:brightness(1.05)}
+  .run:active{transform:translateY(0)}
+  .run:disabled{opacity:.6; cursor:default; transform:none; box-shadow:none}
+
+  .aihint{display:flex; align-items:center; gap:8px; margin-top:14px; font-size:.82rem; color:var(--faint)}
+  .aihint .spark{filter:drop-shadow(0 0 6px rgba(255,180,90,.6))}
+
+  /* Loading */
+  .loading{display:none; text-align:center; padding:34px 10px}
+  .loading.on{display:block}
+  .sun-load{
+    width:64px;height:64px;border-radius:50%;margin:0 auto 16px;
+    background:conic-gradient(from 0deg, var(--sun-1), var(--sun-3), var(--sun-1));
+    animation:spin 1.1s linear infinite; box-shadow:0 0 30px rgba(255,140,60,.6);
+    -webkit-mask:radial-gradient(circle 22px at center, transparent 97%, #000 100%);
+            mask:radial-gradient(circle 22px at center, transparent 97%, #000 100%);
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadMsg{color:var(--muted); font-size:.95rem}
+
+  /* Results */
+  #results{display:none}
+  #results.on{display:block}
+  .err{background:rgba(255,80,80,.14); border:1px solid rgba(255,110,110,.4); color:#ffd7d7;
+       border-radius:14px; padding:14px 16px; font-size:.92rem}
+
+  .hero{display:flex; gap:26px; align-items:center; flex-wrap:wrap}
+  .hero .meta{flex:1; min-width:220px}
+  .verdict{font-size:1.5rem; font-weight:800; letter-spacing:-.01em}
+  .verdict small{display:block; color:var(--faint); font-weight:500; font-size:.85rem; margin-top:4px; word-break:break-all}
+  .stats{display:flex; gap:24px; margin-top:16px; flex-wrap:wrap}
+  .stat b{display:block; font-size:1.35rem; font-weight:800; line-height:1.1}
+  .stat span{font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint)}
+
+  h2.sec{font-size:1.05rem; font-weight:750; margin:30px 0 12px; letter-spacing:-.01em}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px}
+  .cat{background:var(--card-2); border:1px solid var(--line-2); border-radius:14px; padding:14px}
+  .cat .n{font-size:.8rem; color:var(--muted); font-weight:600}
+  .cat .s{font-size:1.6rem; font-weight:800; letter-spacing:-.02em; margin-top:2px}
+  .bar{height:6px; border-radius:99px; background:rgba(255,255,255,.08); margin-top:9px; overflow:hidden}
+  .bar > i{display:block; height:100%; border-radius:99px}
+
+  /* Screenshots */
+  .shots-tabs{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+  .shots-tabs .chip.on{color:#2a0f0a}
+  .shot-frame{border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#0d0509;
+              max-height:560px; overflow-y:auto}
+  .shot-frame img{display:block; width:100%}
+
+  /* Rows */
+  .rowitem{display:flex; gap:12px; padding:13px 4px; border-top:1px solid var(--line-2)}
+  .rowitem:first-child{border-top:none}
+  .rowitem .lbl{font-weight:640; font-size:.96rem}
+  .rowitem .det{color:var(--muted); font-size:.86rem; margin-top:2px}
+  .dot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+       color:#1a0a06;font-size:.72rem;font-weight:800}
+  .evi{background:rgba(0,0,0,.28); border:1px solid var(--line-2); border-radius:10px; padding:8px 11px;
+       margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.76rem; color:#f0c9bb;
+       white-space:pre-wrap; word-break:break-all}
+  .evi span{display:block}
+
+  .ai-banner{display:flex; gap:12px; align-items:flex-start; font-size:.95rem; line-height:1.5}
+  .badge{display:inline-flex; align-items:center; gap:7px; font-size:.78rem; font-weight:700;
+         padding:5px 11px; border-radius:999px}
+
+  details.cat-det{background:var(--card-2); border:1px solid var(--line-2); border-radius:14px; margin-top:10px; overflow:hidden}
+  details.cat-det > summary{cursor:pointer; padding:14px 16px; font-weight:700; list-style:none; display:flex;
+       align-items:center; justify-content:space-between; gap:10px}
+  details.cat-det > summary::-webkit-details-marker{display:none}
+  details.cat-det[open] > summary{border-bottom:1px solid var(--line-2)}
+  .cat-det .body{padding:4px 16px 12px}
+  .mini{font-size:.75rem; color:var(--faint); font-weight:600}
+
+  footer{margin-top:40px; text-align:center; color:var(--faint); font-size:.8rem; line-height:1.6}
+  a{color:var(--sun-1)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo"></div>
+    <h1 class="title">VercelCheck</h1>
+  </div>
+  <p class="tagline">Point it at any deployment and tell it what to watch for.
+    It opens the page in a real browser, always checks loading and the common bugs,
+    then an AI reviews the screenshots against your specifics.</p>
+
+  <!-- INPUT -->
+  <div class="card" id="inputCard">
+    <label class="fld" for="url">Deployment URL</label>
+    <input id="url" type="text" placeholder="my-app.vercel.app  or  https://my-app-git-main.vercel.app" autocomplete="off" />
+
+    <div style="margin-top:18px">
+      <label class="fld" for="details">What should I watch for?</label>
+      <textarea id="details" placeholder="One specific per line, e.g.:
+Hero section with a “Get started” button
+Working search bar in the header
+Dark mode toggle
+Pricing table with three tiers
+Contact form that submits"></textarea>
+      <div class="hint">✅ Loading time and the common bugs (blank page, layout overflow, broken images,
+        JS/console errors, failed requests, stuck spinners, responsiveness…) are <b>always</b> checked
+        automatically. Add anything specific to your app above.</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label class="fld">Viewports</label>
+        <div class="chips" id="vps">
+          <div class="chip on" data-vp="Desktop">🖥️ Desktop</div>
+          <div class="chip" data-vp="Tablet">📱 Tablet</div>
+          <div class="chip on" data-vp="Mobile">📲 Mobile</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="run" id="run">Run test&nbsp; ▸</button>
+    <div class="aihint"><span class="spark">✨</span><span id="aiHint">AI review runs automatically when <code>OPENAI_API_KEY</code> is set in your Vercel environment.</span></div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">
+    <div class="sun-load"></div>
+    <div id="loadMsg">Warming up the browser…</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results"></div>
+
+  <footer>
+    Built to test Vercel deployments · runs a real headless Chromium on a Vercel function.<br/>
+    Set <code>OPENAI_API_KEY</code> (and optionally <code>OPENAI_MODEL</code>) in Project → Settings → Environment Variables.
+  </footer>
+</div>
+
+<script>
+const S = { pass:'--pass', warn:'--warn', fail:'--fail', info:'--info' };
+const ICON = { pass:'✓', warn:'!', fail:'✕', info:'i' };
+const cssv = (v)=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const col = (s)=>cssv(S[s]||'--info');
+const esc = (t)=>String(t==null?'':t).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const scoreColor = (n)=> n>=85?cssv('--pass') : n>=55?cssv('--warn') : cssv('--fail');
+const dot = (s,sz=22)=>`<span class="dot" style="background:${col(s)};width:${sz}px;height:${sz}px">${ICON[s]}</span>`;
+
+// viewport chips
+document.querySelectorAll('#vps .chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+
+const loadMsgs = ['Warming up the browser…','Loading your deployment…','Checking layout & responsiveness…',
+  'Scanning for console & network errors…','Capturing screenshots…','Asking the AI to review it…','Grading the results…'];
+let msgTimer=null;
+function startLoading(){
+  document.getElementById('results').classList.remove('on');
+  const L=document.getElementById('loading'); L.classList.add('on');
+  let i=0; document.getElementById('loadMsg').textContent=loadMsgs[0];
+  msgTimer=setInterval(()=>{ i=Math.min(i+1,loadMsgs.length-1); document.getElementById('loadMsg').textContent=loadMsgs[i]; }, 4200);
+}
+function stopLoading(){ clearInterval(msgTimer); document.getElementById('loading').classList.remove('on'); }
+
+document.getElementById('run').addEventListener('click', runTest);
+document.getElementById('url').addEventListener('keydown', e=>{ if(e.key==='Enter') runTest(); });
+
+async function runTest(){
+  const url = document.getElementById('url').value.trim();
+  if(!url){ document.getElementById('url').focus(); return; }
+  const details = document.getElementById('details').value;
+  const viewports = [...document.querySelectorAll('#vps .chip.on')].map(c=>c.dataset.vp);
+  const btn = document.getElementById('run'); btn.disabled=true; btn.textContent='Testing…';
+  startLoading();
+  const ctrl = new AbortController();
+  const to = setTimeout(()=>ctrl.abort(), 95000);
+  try{
+    const r = await fetch('/api/test', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ url, details, viewports }), signal: ctrl.signal,
+    });
+    const data = await r.json();
+    if(!r.ok){ render({error:data.error||('Request failed ('+r.status+')')}); }
+    else { render(data); }
+  }catch(e){
+    render({error: e.name==='AbortError' ? 'Timed out after 95s — the site may be very slow or blocking bots.' : ('Network error: '+e.message)});
+  }finally{
+    clearTimeout(to); stopLoading(); btn.disabled=false; btn.innerHTML='Run test&nbsp; ▸';
+  }
+}
+
+function render(d){
+  const R = document.getElementById('results'); R.classList.add('on');
+  if(d.error && !d.report){ R.innerHTML = `<div class="card"><div class="err">⚠️ ${esc(d.error)}</div></div>`; R.scrollIntoView({behavior:'smooth'}); return; }
+  const rep=d.report, m=d.metrics||{};
+  let h = '';
+
+  // Hero
+  h += `<div class="card section">${heroHtml(rep,m)}</div>`;
+
+  // Categories
+  h += `<h2 class="sec">Category scores</h2><div class="grid">`;
+  for(const [name,info] of Object.entries(rep.category_scores)){
+    if(!info.present) continue;
+    const c = scoreColor(info.score);
+    h += `<div class="cat"><div class="n">${esc(name)}</div><div class="s" style="color:${c}">${info.score}</div>
+          <div class="bar"><i style="width:${info.score}%;background:${c}"></i></div></div>`;
+  }
+  h += `</div>`;
+
+  // AI review
+  if(d.ai && d.ai.available){
+    h += `<h2 class="sec">✨ AI review${d.ai.model?` · <span class="mini">${esc(d.ai.model)}</span>`:''}</h2>`;
+    const broken = d.ai.looks_broken;
+    if(d.ai.overall_impression){
+      h += `<div class="card"><div class="ai-banner"><span style="font-size:1.2rem">${broken?'🔴':'🟢'}</span>
+            <div>${esc(d.ai.overall_impression)}</div></div></div>`;
+    }
+    const bugs = d.ai.visual_bugs||[];
+    if(bugs.length){
+      h += `<div class="card section">` + bugs.map(b=>{
+        const sev=(b.severity||'medium').toLowerCase(); const st= sev==='high'?'fail':sev==='low'?'info':'warn';
+        return `<div class="rowitem">${dot(st)}<div><div class="lbl">${esc(b.issue)}</div>${b.where?`<div class="det">Where: ${esc(b.where)}</div>`:''}</div></div>`;
+      }).join('') + `</div>`;
+    } else {
+      h += `<div class="hint" style="margin-top:8px">The AI found no obvious visual bugs in the screenshots.</div>`;
+    }
+  } else if(d.ai && d.ai.reason){
+    h += `<h2 class="sec">✨ AI review</h2><div class="card"><div class="hint">Not run: ${esc(d.ai.reason)}</div></div>`;
+  }
+
+  // Feature checklist
+  const feats = d.features||[];
+  if(feats.length){
+    const aiMap={};
+    if(d.ai && d.ai.available) (d.ai.feature_verdicts||[]).forEach(v=>{ aiMap[(v.feature||'').trim().toLowerCase()]=v; });
+    h += `<h2 class="sec">What you asked me to watch for</h2><div class="card">`;
+    h += feats.map(f=>{
+      const v = aiMap[f.feature.trim().toLowerCase()];
+      let ai='';
+      if(v){ const st=normAi(v.status); ai=`<div class="det" style="margin-top:5px"><b style="color:${col(st)}">AI: ${esc(v.status)}</b> — ${esc(v.evidence||'')}</div>`; }
+      return `<div class="rowitem">${dot(f.status)}<div style="flex:1"><div class="lbl">${esc(f.feature)}</div><div class="det">${esc(f.note)}</div>${ai}</div></div>`;
+    }).join('');
+    h += `</div>`;
+  }
+
+  // Screenshots
+  const shots=(d.screenshots||[]).filter(s=>s.dataUrl);
+  if(shots.length){
+    h += `<h2 class="sec">Screenshots</h2>`;
+    h += `<div class="shots-tabs" id="shotTabs">` + shots.map((s,i)=>
+      `<div class="chip ${i===0?'on':''}" data-i="${i}">${esc(s.name)} · ${s.width}×${s.height}</div>`).join('') + `</div>`;
+    h += `<div class="shot-frame"><img id="shotImg" src="${shots[0].dataUrl}" alt="screenshot"/></div>`;
+  }
+
+  // Detailed checks
+  h += `<h2 class="sec">Detailed checks</h2>`;
+  const byCat={};
+  rep.checks.forEach(c=>{ (byCat[c.category]=byCat[c.category]||[]).push(c); });
+  for(const [cat,items] of Object.entries(byCat)){
+    const f=items.filter(i=>i.status==='fail').length, w=items.filter(i=>i.status==='warn').length;
+    const open = f>0;
+    h += `<details class="cat-det" ${open?'open':''}><summary><span>${esc(cat)}</span>
+          <span class="mini">${f} fail · ${w} warn</span></summary><div class="body">`;
+    h += items.map(c=>{
+      let evi=''; if(c.evidence && c.evidence.length){ evi=`<div class="evi">`+c.evidence.map(e=>`<span>• ${esc(e)}</span>`).join('')+`</div>`; }
+      return `<div class="rowitem">${dot(c.status)}<div style="flex:1"><div class="lbl">${esc(c.label)}</div><div class="det">${esc(c.detail)}</div>${evi}</div></div>`;
+    }).join('');
+    h += `</div></details>`;
+  }
+
+  R.innerHTML = h;
+
+  // wire screenshot tabs
+  const tabs=document.getElementById('shotTabs');
+  if(tabs){ tabs.addEventListener('click', e=>{
+    const t=e.target.closest('.chip'); if(!t) return;
+    tabs.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); t.classList.add('on');
+    document.getElementById('shotImg').src = shots[+t.dataset.i].dataUrl;
+    document.querySelector('.shot-frame').scrollTop=0;
+  }); }
+  R.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function heroHtml(rep,m){
+  const c=scoreColor(rep.score); const R=52, C=2*Math.PI*R, dash=(C*Math.max(0,Math.min(1,rep.score/100))).toFixed(1)+' '+C.toFixed(1);
+  const ring=`<svg width="132" height="132" viewBox="0 0 132 132" style="flex:0 0 auto">
+    <circle cx="66" cy="66" r="${R}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+    <circle cx="66" cy="66" r="${R}" fill="none" stroke="${c}" stroke-width="12" stroke-linecap="round"
+      stroke-dasharray="${dash}" transform="rotate(-90 66 66)"/>
+    <text x="66" y="60" text-anchor="middle" font-size="34" font-weight="800" fill="${cssv('--ink')}">${rep.score}</text>
+    <text x="66" y="82" text-anchor="middle" font-size="12" fill="${cssv('--faint')}">/ 100</text></svg>`;
+  const load = m.load_ms?`${m.load_ms} ms`:'—';
+  return `<div class="hero">${ring}<div class="meta">
+      <div class="verdict">Grade ${esc(rep.grade)} · ${esc(rep.verdict)}<small>${esc(m.final_url||'')}</small></div>
+      <div class="stats">
+        <div class="stat"><b style="color:${cssv('--fail')}">${rep.fails}</b><span>Failures</span></div>
+        <div class="stat"><b style="color:${cssv('--warn')}">${rep.warns}</b><span>Warnings</span></div>
+        <div class="stat"><b>${esc(m.http_status||'—')}</b><span>HTTP</span></div>
+        <div class="stat"><b>${esc(load)}</b><span>Load time</span></div>
+      </div></div></div>`;
+}
+function normAi(s){ s=(s||'').toLowerCase(); if(s==='present'||s==='pass')return 'pass'; if(s==='partial'||s==='warn')return 'warn'; if(['missing','broken','fail'].includes(s))return 'fail'; return 'info'; }
+</script>
+</body>
+</html>
