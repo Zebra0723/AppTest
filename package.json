@@ -1,0 +1,16 @@
+{
+  "name": "vercelcheck",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A bot that tests any Vercel deployment for loading/layout bugs and app-specific features, with an AI review.",
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "selftest": "node scripts/selftest.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "123.0.1",
+    "openai": "^4.67.0",
+    "puppeteer-core": "22.15.0"
+  }
+}

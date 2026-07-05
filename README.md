@@ -1,21 +1,38 @@
-# 🛰️ VercelCheck
+# 🌅 VercelCheck
 
-A bot that **tests any of your Vercel deployments**. Give it a URL and a
-plain-English description of what the app should include, and it drives a real
-headless browser against the site to hunt for bugs — from common layout/loading
-problems all the way to the niche, app-specific features you list.
+A bot that **tests any of your Vercel deployments** — deployed *on* Vercel itself.
 
-It ships with a **minimalistic, visual dashboard**: an overall health score,
-per-category scores, screenshots at multiple viewports, a feature checklist, and
-detailed drill-downs.
-
-<sub>Preview build: point it at your Preview / branch deploys, not just prod.</sub>
+Paste a deployment URL, type what the app should include, and hit **Run test**. It
+opens the page in a real headless Chromium (running in a Vercel serverless
+function), **always** checks loading and the common bugs, then **OpenAI** reviews
+the actual screenshots against the specifics you listed. Results come back on a
+minimalistic, sunset-themed dashboard: a health score, per-category scores,
+screenshots, a feature checklist and detailed drill-downs.
 
 ---
 
+## How it works
+
+```
+public/index.html     ← the sunset UI (static, self-contained)
+api/test.js           ← Vercel serverless function: runs the audit + AI review
+lib/
+  browser.js          ← launches Chromium (@sparticuz/chromium on Vercel)
+  runAudit.js         ← drives the page with puppeteer-core, collects raw signals
+  pageAudit.js        ← the checks that run *inside* the page
+  grade.js            ← turns the raw audit into graded checks + a 0-100 score
+  ai.js               ← OpenAI-vision review of the screenshots
+scripts/              ← local dev server + self-test (not used in production)
+sample_site/          ← a deliberately buggy demo page to try it on
+```
+
+The front-end POSTs to `/api/test`, which launches Chromium, runs every check
+across the chosen viewports, captures screenshots, grades everything, and calls
+OpenAI — all in one request.
+
 ## What it checks
 
-**Common bugs (always, automatically):**
+**Always, automatically:**
 
 | Area | Examples |
 | --- | --- |
@@ -24,81 +41,56 @@ detailed drill-downs.
 | **Network** | failed requests, resources returning 4xx/5xx |
 | **Layout** | horizontal overflow (sideways-scroll bug), broken images, missing `viewport` meta |
 | **Loading** | spinners/skeletons still spinning after the page settles |
-| **Responsive** | layout re-checked at Desktop / Tablet / Mobile, with screenshots |
+| **Responsive** | re-checked at Desktop / Tablet / Mobile, with screenshots |
 | **Content & SEO** | `<title>`, meta description, favicon, `<h1>` structure |
 | **Accessibility** | missing image `alt`, unlabeled controls & form inputs |
 
-**App-specific features (you describe them):**
-
-Type one expectation per line — *"Working search bar in the header"*, *"Dark mode
-toggle"*, *"Pricing table with three tiers"* — and the bot looks for each on the
-page. Heuristic matching runs always; the optional **AI visual review** has
-Claude look at the actual screenshots to confirm each feature is really there and
-flag visual bugs a DOM scan can't see.
+**Your specifics:** every line you type ("Dark mode toggle", "Pricing table with
+three tiers", …) is matched on the page, and the OpenAI review looks at the
+screenshots to give a per-specific verdict (present / partial / missing / broken)
+and flag visual bugs a DOM scan can't see.
 
 ---
 
-## Run it
+## Deploy to Vercel
+
+1. Import this repo into Vercel (no framework preset needed — it's detected as
+   static files + a Node function).
+2. Add environment variables under **Project → Settings → Environment Variables**:
+   - `OPENAI_API_KEY` — **required for the AI review** (the auto checks run without it).
+   - `OPENAI_MODEL` — *optional*, defaults to `gpt-4o` (any vision-capable model, e.g. `gpt-4o-mini`).
+3. Deploy. Open the site, paste a deployment URL, describe what to watch for, run.
+
+`vercel.json` gives the function `maxDuration: 60` so a full audit + AI review
+fits comfortably.
+
+> The auto checks work with **no API key** — the AI review is the part that needs
+> `OPENAI_API_KEY`. If it's missing, the dashboard just says the AI review wasn't run.
+
+---
+
+## Run locally
 
 ```bash
-pip install -r requirements.txt
-python -m playwright install chromium   # one-time: download the browser
-streamlit run streamlit_app.py
+npm install
+npx puppeteer browsers install chrome        # or point LOCAL_CHROME_PATH at any Chrome
+LOCAL_CHROME_PATH="$(node -e "console.log(require('puppeteer-core').executablePath?'':'')")" # optional
+OPENAI_API_KEY=sk-...  LOCAL_CHROME_PATH=/path/to/chrome  npm run dev
+# open http://127.0.0.1:3000
 ```
 
-Then open http://localhost:8501, paste a deployment URL, describe what it should
-include, and hit **Run test**.
-
-### Optional: AI visual review
-
-Set an Anthropic API key (or paste it into the "AI visual review" panel):
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-The heuristic engine works fully without a key — the AI layer is an enhancement.
-
----
-
-## Deploy the bot
-
-- **Streamlit Community Cloud** — push this repo, set the main file to
-  `streamlit_app.py`. `packages.txt` installs Chromium's system libraries and
-  the app downloads the browser on first run. Add `ANTHROPIC_API_KEY` under
-  *Secrets* if you want the AI review.
-- **Codespaces / Dev Container** — the included `.devcontainer` installs
-  everything and launches the app on attach.
-
-> Note: this bot renders and tests *other* sites in a headless browser, so it
-> needs a Python host with an outbound network (Streamlit Cloud, a container, a
-> VM). It is not itself a static Vercel site.
-
----
-
-## How it's built
-
-```
-streamlit_app.py        # the dashboard (entry point)
-vercel_bot/
-  engine.py             # headless-Chromium audit engine (runs as a subprocess)
-  scoring.py            # turns a raw audit into graded checks + a health score
-  ai.py                 # optional Claude-vision review of the screenshots
-  styles.py             # CSS + HTML fragments for the visual UI
-sample_site/            # a deliberately buggy demo page to try the bot on
-```
-
-The engine runs in a subprocess so Playwright's sync API never collides with
-Streamlit's event loop. Screenshots are captured per viewport and fed to both
-the dashboard and (optionally) Claude.
+`LOCAL_CHROME_PATH` tells the launcher to use a Chrome you already have instead of
+the Lambda build (which only runs on Vercel). Setting it also enables testing
+`localhost` URLs, which are blocked in production to prevent SSRF.
 
 ### Try it on the included demo
 
 ```bash
-python -m http.server 8000 --directory sample_site
-# then test  http://localhost:8000  in the app
+python3 -m http.server 8770 --directory sample_site
+# in another shell:
+LOCAL_CHROME_PATH=/path/to/chrome npm run selftest    # prints the graded audit
 ```
 
-The demo page intentionally contains a horizontal-overflow bug, a broken image,
-a missing `viewport` meta tag, a stuck spinner, a console error and a 404 fetch —
-so you can see every category light up.
+The demo page intentionally contains a horizontal-overflow bug, a broken image, a
+missing `viewport` meta tag, a stuck spinner, a console error and a 404 fetch — so
+every category lights up.

@@ -1,4 +1,8 @@
+node_modules/
+.vercel/
+.env
+.env.*
+npm-debug.log*
+.DS_Store
 __pycache__/
 *.pyc
-.streamlit/secrets.toml
-vercelcheck_*/
