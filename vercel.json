@@ -2,8 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/test.js": {
-      "maxDuration": 60,
-      "includeFiles": "node_modules/@sparticuz/chromium/**"
+      "maxDuration": 60
     }
   },
   "rewrites": [
