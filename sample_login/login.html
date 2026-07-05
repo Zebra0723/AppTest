@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nebula Notes — Sign in</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0f1226;color:#eee;display:grid;place-items:center;height:100vh;margin:0}
+  .box{background:#1a1f3a;padding:28px;border-radius:14px;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  h1{font-size:1.2rem;margin:0 0 16px}
+  label{display:block;font-size:.8rem;margin:12px 0 5px;color:#aab}
+  input{width:100%;padding:10px;border-radius:8px;border:1px solid #333a5c;background:#0f1226;color:#fff;box-sizing:border-box}
+  button{margin-top:18px;width:100%;padding:11px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-weight:600;cursor:pointer}
+  .error{color:#ff8080;font-size:.82rem;margin-top:12px;min-height:1em}
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>🔒 Sign in to Nebula Notes</h1>
+    <form id="f">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" />
+      <button type="submit">Sign in</button>
+      <div class="error" id="err"></div>
+    </form>
+  </div>
+  <script>
+    // Demo credentials for testing the bot's automated login.
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const em = document.getElementById('email').value.trim();
+      const pw = document.getElementById('password').value;
+      if (em === 'test@example.com' && pw === 'secret123') {
+        localStorage.setItem('authed', '1');
+        location.href = '/app.html';
+      } else {
+        document.getElementById('err').textContent = 'Invalid credentials. Try again.';
+      }
+    });
+  </script>
+</body>
+</html>

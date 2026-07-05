@@ -7,34 +7,64 @@
 <meta name="description" content="Point it at any Vercel deployment, tell it what to watch for, and it hunts for loading, layout and feature bugs — with a real browser and an AI review." />
 <style>
   :root{
-    --bg-1:#1c0a1f; --bg-2:#3a0f24; --bg-3:#7d1e22;
-    --sun-1:#ffd36e; --sun-2:#ff8a3d; --sun-3:#ff4d4d;
-    --accent:#ff6b3d;
+    /* shared sunset accents */
+    --sun-1:#ffd36e; --sun-2:#ff8a3d; --sun-3:#ff4d4d; --accent:#ff6b3d;
+    /* ---- LIGHT (default) ---- */
+    --ink:#40200f; --muted:#a05a3c; --faint:#b9805f;
+    --card:rgba(255,255,255,.82); --card-2:rgba(255,255,255,.66);
+    --line:rgba(214,110,60,.24); --line-2:rgba(214,110,60,.13);
+    --pass:#12a150; --warn:#c26a10; --fail:#d92d20; --info:#8a6a5c;
+    --track:rgba(120,60,30,.13);
+    --input-bg:rgba(255,255,255,.78); --placeholder:#c08d78;
+    --evi-bg:rgba(120,60,30,.06); --evi-ink:#7a3f28;
+    --shot-bg:#ffffff;
+    --shadow:0 22px 50px -26px rgba(150,60,25,.38);
+    --page:
+      radial-gradient(120% 80% at 50% -10%, rgba(255,190,110,.55), transparent 46%),
+      radial-gradient(90% 60% at 82% 6%, rgba(255,130,120,.24), transparent 55%),
+      linear-gradient(180deg,#fff6ec 0%, #ffe9d8 45%, #ffdcca 100%);
+    --disc:radial-gradient(circle, rgba(255,205,120,.55), rgba(255,150,80,.18) 55%, transparent 70%);
+  }
+  :root[data-theme="dark"]{
     --ink:#fdeee6; --muted:#e0a892; --faint:#c98d7e;
     --card:rgba(38,16,24,.55); --card-2:rgba(52,22,30,.6);
     --line:rgba(255,150,100,.16); --line-2:rgba(255,150,100,.10);
     --pass:#48d597; --warn:#ffb038; --fail:#ff6363; --info:#c79a8e;
+    --track:rgba(255,255,255,.10);
+    --input-bg:rgba(20,8,12,.5); --placeholder:#b07b6d;
+    --evi-bg:rgba(0,0,0,.28); --evi-ink:#f0c9bb;
+    --shot-bg:#0d0509;
     --shadow:0 20px 60px -20px rgba(0,0,0,.6);
+    --page:
+      radial-gradient(120% 80% at 50% -10%, rgba(255,180,90,.28), transparent 45%),
+      radial-gradient(90% 60% at 80% 10%, rgba(255,90,90,.20), transparent 50%),
+      linear-gradient(180deg,#1c0a1f 0%, #3a0f24 42%, #7d1e22 100%);
+    --disc:radial-gradient(circle, rgba(255,210,120,.55), rgba(255,120,60,.15) 55%, transparent 70%);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
     color:var(--ink); min-height:100vh; position:relative; overflow-x:hidden;
-    background:
-      radial-gradient(120% 80% at 50% -10%, rgba(255,180,90,.28), transparent 45%),
-      radial-gradient(90% 60% at 80% 10%, rgba(255,90,90,.20), transparent 50%),
-      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 42%, var(--bg-3) 100%);
-    background-attachment:fixed;
+    background:var(--page); background-attachment:fixed;
+    transition:color .2s;
   }
   /* faint sun disc */
   body::before{
     content:""; position:fixed; top:-120px; left:50%; transform:translateX(-50%);
     width:520px; height:520px; border-radius:50%;
-    background:radial-gradient(circle, rgba(255,210,120,.55), rgba(255,120,60,.15) 55%, transparent 70%);
+    background:var(--disc);
     filter:blur(6px); z-index:0; pointer-events:none;
   }
   .wrap{position:relative; z-index:1; max-width:960px; margin:0 auto; padding:38px 20px 90px}
+
+  .theme-toggle{
+    position:absolute; top:34px; right:20px; width:44px; height:44px; border-radius:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:1.2rem;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    box-shadow:var(--shadow); backdrop-filter:blur(8px); transition:transform .12s, filter .12s;
+  }
+  .theme-toggle:hover{transform:translateY(-1px); filter:brightness(1.05)}
 
   /* Header */
   .brand{display:flex; align-items:center; gap:14px; margin-bottom:6px}
@@ -59,12 +89,12 @@
 
   label.fld{display:block; font-weight:650; font-size:.9rem; margin:2px 0 8px; color:var(--ink)}
   .hint{color:var(--faint); font-size:.82rem; margin-top:7px; line-height:1.45}
-  input[type=text], textarea{
-    width:100%; background:rgba(20,8,12,.5); color:var(--ink);
+  input[type=text], input[type=password], textarea{
+    width:100%; background:var(--input-bg); color:var(--ink);
     border:1px solid var(--line); border-radius:12px; padding:13px 14px;
     font-size:.98rem; font-family:inherit; outline:none; transition:border-color .15s, box-shadow .15s;
   }
-  input[type=text]::placeholder, textarea::placeholder{color:#b07b6d}
+  input::placeholder, textarea::placeholder{color:var(--placeholder)}
   input[type=text]:focus, textarea:focus{
     border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,107,61,.22);
   }
@@ -77,7 +107,7 @@
   .chips{display:flex; gap:8px; flex-wrap:wrap}
   .chip{
     cursor:pointer; user-select:none; padding:8px 14px; border-radius:999px; font-size:.85rem; font-weight:600;
-    border:1px solid var(--line); color:var(--muted); background:rgba(20,8,12,.35); transition:all .15s;
+    border:1px solid var(--line); color:var(--muted); background:var(--card-2); transition:all .15s;
   }
   .chip.on{
     color:#2a0f0a; border-color:transparent;
@@ -98,6 +128,18 @@
   .aihint{display:flex; align-items:center; gap:8px; margin-top:14px; font-size:.82rem; color:var(--faint)}
   .aihint .spark{filter:drop-shadow(0 0 6px rgba(255,180,90,.6))}
 
+  /* Login box */
+  .loginbox{margin-top:20px; border-top:1px solid var(--line-2); padding-top:16px}
+  .switch{display:inline-flex; align-items:center; gap:9px; cursor:pointer; font-weight:640; font-size:.92rem; user-select:none}
+  .switch input{width:17px; height:17px; accent-color:var(--sun-2); cursor:pointer}
+  .opt{color:var(--faint); font-weight:400}
+  .loginfields[hidden]{display:none}
+  details.adv{margin-top:12px}
+  details.adv > summary{cursor:pointer; font-size:.85rem; color:var(--muted); font-weight:600; list-style:none}
+  details.adv > summary::-webkit-details-marker{display:none}
+  details.adv > summary::before{content:'▸ '; color:var(--sun-2)}
+  details.adv[open] > summary::before{content:'▾ '}
+
   /* Loading */
   .loading{display:none; text-align:center; padding:34px 10px}
   .loading.on{display:block}
@@ -114,7 +156,7 @@
   /* Results */
   #results{display:none}
   #results.on{display:block}
-  .err{background:rgba(255,80,80,.14); border:1px solid rgba(255,110,110,.4); color:#ffd7d7;
+  .err{background:rgba(217,45,32,.12); border:1px solid rgba(217,45,32,.42); color:var(--fail);
        border-radius:14px; padding:14px 16px; font-size:.92rem}
 
   .hero{display:flex; gap:26px; align-items:center; flex-wrap:wrap}
@@ -131,13 +173,13 @@
   .cat{background:var(--card-2); border:1px solid var(--line-2); border-radius:14px; padding:14px}
   .cat .n{font-size:.8rem; color:var(--muted); font-weight:600}
   .cat .s{font-size:1.6rem; font-weight:800; letter-spacing:-.02em; margin-top:2px}
-  .bar{height:6px; border-radius:99px; background:rgba(255,255,255,.08); margin-top:9px; overflow:hidden}
+  .bar{height:6px; border-radius:99px; background:var(--track); margin-top:9px; overflow:hidden}
   .bar > i{display:block; height:100%; border-radius:99px}
 
   /* Screenshots */
   .shots-tabs{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
   .shots-tabs .chip.on{color:#2a0f0a}
-  .shot-frame{border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#0d0509;
+  .shot-frame{border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--shot-bg);
               max-height:560px; overflow-y:auto}
   .shot-frame img{display:block; width:100%}
 
@@ -148,8 +190,8 @@
   .rowitem .det{color:var(--muted); font-size:.86rem; margin-top:2px}
   .dot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
        color:#1a0a06;font-size:.72rem;font-weight:800}
-  .evi{background:rgba(0,0,0,.28); border:1px solid var(--line-2); border-radius:10px; padding:8px 11px;
-       margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.76rem; color:#f0c9bb;
+  .evi{background:var(--evi-bg); border:1px solid var(--line-2); border-radius:10px; padding:8px 11px;
+       margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.76rem; color:var(--evi-ink);
        white-space:pre-wrap; word-break:break-all}
   .evi span{display:block}
 
@@ -171,6 +213,7 @@
 </head>
 <body>
 <div class="wrap">
+  <button id="themeToggle" class="theme-toggle" title="Toggle light / dark" aria-label="Toggle light or dark theme">🌙</button>
   <div class="brand">
     <div class="logo"></div>
     <h1 class="title">VercelCheck</h1>
@@ -208,6 +251,32 @@ Contact form that submits"></textarea>
       </div>
     </div>
 
+    <div class="loginbox">
+      <label class="switch"><input type="checkbox" id="needLogin" /> <span>🔒 This site needs a login</span></label>
+      <div class="loginfields" id="loginFields" hidden>
+        <div class="row" style="margin-top:12px">
+          <div><label class="fld">Login page URL <span class="opt">(optional)</span></label>
+            <input id="loginUrl" type="text" autocomplete="off" placeholder="defaults to the deployment URL — or e.g. https://my-app.vercel.app/login" /></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><label class="fld">Email / username</label>
+            <input id="loginUser" type="text" autocomplete="off" placeholder="test@example.com" /></div>
+          <div><label class="fld">Password</label>
+            <input id="loginPass" type="password" autocomplete="off" placeholder="••••••••" /></div>
+        </div>
+        <details class="adv"><summary>Advanced: custom field selectors</summary>
+          <div class="row" style="margin-top:10px">
+            <div><label class="fld">Username field</label><input id="selUser" type="text" placeholder="auto-detected" /></div>
+            <div><label class="fld">Password field</label><input id="selPass" type="text" placeholder="input[type=password]" /></div>
+            <div><label class="fld">Submit button</label><input id="selSubmit" type="text" placeholder="auto-detected" /></div>
+          </div>
+          <div class="hint">CSS selectors, only if auto-detection misses. Leave blank to let the bot find them.</div>
+        </details>
+        <div class="hint">🔐 Credentials go only to your own Vercel function to sign in for this one test — never stored or logged.
+          Use a throwaway test account.</div>
+      </div>
+    </div>
+
     <button class="run" id="run">Run test&nbsp; ▸</button>
     <div class="aihint"><span class="spark">✨</span><span id="aiHint">AI review runs automatically when <code>OPENAI_API_KEY</code> is set in your Vercel environment.</span></div>
   </div>
@@ -228,6 +297,19 @@ Contact form that submits"></textarea>
 </div>
 
 <script>
+// theme
+const THEME_KEY='vc-theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  const b=document.getElementById('themeToggle'); if(b) b.textContent = t==='dark' ? '🌞' : '🌙';
+}
+let theme = localStorage.getItem(THEME_KEY) || 'light';
+applyTheme(theme);
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  theme = theme==='dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, theme); applyTheme(theme);
+});
+
 const S = { pass:'--pass', warn:'--warn', fail:'--fail', info:'--info' };
 const ICON = { pass:'✓', warn:'!', fail:'✕', info:'i' };
 const cssv = (v)=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -238,6 +320,19 @@ const dot = (s,sz=22)=>`<span class="dot" style="background:${col(s)};width:${sz
 
 // viewport chips
 document.querySelectorAll('#vps .chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+
+// login toggle
+document.getElementById('needLogin').addEventListener('change', e=>{
+  document.getElementById('loginFields').hidden = !e.target.checked;
+});
+function gatherAuth(){
+  if(!document.getElementById('needLogin').checked) return null;
+  const v=(id)=>document.getElementById(id).value.trim();
+  const pass=document.getElementById('loginPass').value;
+  if(!pass || (!v('loginUser') && !v('selUser'))) return null;
+  return { loginUrl:v('loginUrl')||undefined, username:v('loginUser'), password:pass,
+    userSelector:v('selUser')||undefined, passSelector:v('selPass')||undefined, submitSelector:v('selSubmit')||undefined };
+}
 
 const loadMsgs = ['Warming up the browser…','Loading your deployment…','Checking layout & responsiveness…',
   'Scanning for console & network errors…','Capturing screenshots…','Asking the AI to review it…','Grading the results…'];
@@ -265,7 +360,7 @@ async function runTest(){
   try{
     const r = await fetch('/api/test', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ url, details, viewports }), signal: ctrl.signal,
+      body: JSON.stringify({ url, details, viewports, auth: gatherAuth() }), signal: ctrl.signal,
     });
     const data = await r.json();
     if(!r.ok){ render({error:data.error||('Request failed ('+r.status+')')}); }
@@ -282,6 +377,15 @@ function render(d){
   if(d.error && !d.report){ R.innerHTML = `<div class="card"><div class="err">⚠️ ${esc(d.error)}</div></div>`; R.scrollIntoView({behavior:'smooth'}); return; }
   const rep=d.report, m=d.metrics||{};
   let h = '';
+
+  // Login status banner
+  if(d.login && d.login.attempted){
+    const ok=d.login.success;
+    h += `<div class="card section" style="border-color:${ok?'rgba(72,213,151,.4)':'rgba(255,176,56,.45)'}">
+      <div class="ai-banner"><span style="font-size:1.2rem">${ok?'🔓':'⚠️'}</span>
+      <div><b>${ok?'Signed in':'Login not confirmed'}</b> — ${esc(d.login.detail)}
+      ${ok?'':'<div class="det" style="margin-top:4px">The checks below ran against whatever page was showing — likely the login screen.</div>'}</div></div></div>`;
+  }
 
   // Hero
   h += `<div class="card section">${heroHtml(rep,m)}</div>`;
@@ -373,7 +477,7 @@ function render(d){
 function heroHtml(rep,m){
   const c=scoreColor(rep.score); const R=52, C=2*Math.PI*R, dash=(C*Math.max(0,Math.min(1,rep.score/100))).toFixed(1)+' '+C.toFixed(1);
   const ring=`<svg width="132" height="132" viewBox="0 0 132 132" style="flex:0 0 auto">
-    <circle cx="66" cy="66" r="${R}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+    <circle cx="66" cy="66" r="${R}" fill="none" stroke="${cssv('--track')}" stroke-width="12"/>
     <circle cx="66" cy="66" r="${R}" fill="none" stroke="${c}" stroke-width="12" stroke-linecap="round"
       stroke-dasharray="${dash}" transform="rotate(-90 66 66)"/>
     <text x="66" y="60" text-anchor="middle" font-size="34" font-weight="800" fill="${cssv('--ink')}">${rep.score}</text>
