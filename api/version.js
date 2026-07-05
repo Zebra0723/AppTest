@@ -3,7 +3,7 @@
 // deployed code even if the browser cached an older index.html. `node` reports
 // the runtime Node version — it MUST be 20.x on Vercel (Node 22 is missing the
 // system libraries Chromium needs, causing libnss3.so errors).
-export const UI_VERSION = '1.4.3';
+export const UI_VERSION = '1.4.4';
 
 export default function handler(req, res) {
   res.status(200).json({
