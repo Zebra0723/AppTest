@@ -293,6 +293,7 @@ Contact form that submits"></textarea>
   <footer>
     Built to test Vercel deployments · runs a real headless Chromium on a Vercel function.<br/>
     Set <code>OPENAI_API_KEY</code> (and optionally <code>OPENAI_MODEL</code>) in Project → Settings → Environment Variables.
+    <div id="build" style="margin-top:10px; opacity:.85; font-variant-numeric:tabular-nums">VercelCheck v1.4.0</div>
   </footer>
 </div>
 
@@ -309,6 +310,15 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
   theme = theme==='dark' ? 'light' : 'dark';
   localStorage.setItem(THEME_KEY, theme); applyTheme(theme);
 });
+
+// build/version stamp — pulls the live deploy's commit from the server (never cached)
+const UI_VERSION = '1.4.0';
+fetch('/api/version', {cache:'no-store'}).then(r=>r.json()).then(v=>{
+  const el=document.getElementById('build'); if(!el) return;
+  const uiMatch = v.version === UI_VERSION;
+  el.textContent = `VercelCheck v${v.version} · ${v.commit}${v.env&&v.env!=='dev'?' · '+v.env:''}`;
+  if(!uiMatch) el.textContent += ` (page cached: v${UI_VERSION})`;
+}).catch(()=>{});
 
 const S = { pass:'--pass', warn:'--warn', fail:'--fail', info:'--info' };
 const ICON = { pass:'✓', warn:'!', fail:'✕', info:'i' };

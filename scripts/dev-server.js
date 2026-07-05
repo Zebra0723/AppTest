@@ -7,8 +7,10 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import handler from '../api/test.js';
+import testHandler from '../api/test.js';
+import versionHandler from '../api/version.js';
 
+const API = { '/api/test': testHandler, '/api/version': versionHandler };
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PORT = process.env.PORT || 3000;
@@ -19,11 +21,11 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://${req.headers.host}`);
 
-  if (u.pathname === '/api/test') {
-    // Adapt Node's res to the Express-ish API the handler expects.
+  if (API[u.pathname]) {
+    // Adapt Node's res to the Express-ish API the handlers expect.
     res.status = (c) => { res.statusCode = c; return res; };
     res.json = (o) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); return res; };
-    try { await handler(req, res); }
+    try { await API[u.pathname](req, res); }
     catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: String(e) })); }
     return;
   }
