@@ -85,17 +85,23 @@ under test (Project → Settings → Deployment Protection) or test the public U
    before importing `@sparticuz/chromium`, which is what makes the package extract
    its Amazon Linux 2023 libraries and set `LD_LIBRARY_PATH`. (Vercel doesn't set
    that variable itself, which is why Chromium otherwise can't find its libraries.)
-3. Add environment variables under **Project → Settings → Environment Variables**:
-   - `OPENAI_API_KEY` — **required for the AI review** (the auto checks run without it).
-   - `OPENAI_MODEL` — *optional*, defaults to `gpt-4o` (any vision-capable model, e.g. `gpt-4o-mini`).
+3. Add an AI key under **Project → Settings → Environment Variables** for the AI
+   review (the auto checks run without it). The bot auto-detects the provider,
+   preferring free ones:
+   - **`GEMINI_API_KEY`** — *recommended, **free***. Get one at
+     https://aistudio.google.com/apikey (no credit card). Optional `GEMINI_MODEL`
+     (default `gemini-2.0-flash`).
+   - `GROQ_API_KEY` — also free, OpenAI-compatible. Optional `GROQ_MODEL`.
+   - `OPENAI_API_KEY` — paid. Optional `OPENAI_MODEL` (default `gpt-4o`).
 4. Deploy. The footer shows `VercelCheck v<x> · <commit> · node v<XX>` — confirm it
    reads **`node v20.x`**. Then paste a deployment URL, describe what to watch for, run.
 
 `vercel.json` gives the function `maxDuration: 60` so a full audit + AI review
 fits comfortably.
 
-> The auto checks work with **no API key** — the AI review is the part that needs
-> `OPENAI_API_KEY`. If it's missing, the dashboard just says the AI review wasn't run.
+> The auto checks work with **no API key** — the AI review is the only part that
+> needs one, and a **free** `GEMINI_API_KEY` covers it. If none is set, the
+> dashboard just says the AI review wasn't run.
 
 ### Bulletproof option: a hosted browser (no Chromium on Vercel)
 
