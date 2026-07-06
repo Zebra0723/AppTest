@@ -79,11 +79,12 @@ under test (Project → Settings → Deployment Protection) or test the public U
 
 1. Import this repo into Vercel (no framework preset needed — it's detected as
    static files + a Node function).
-2. **Set the Node.js version to 20.x.** ⚠️ This is required. Vercel's Node **22.x**
-   runtime is missing the system libraries Chromium needs (`libnss3.so` /
-   `libnspr4.so`), so the browser fails to launch on 22. `package.json` pins
-   `engines.node: "20.x"`, and you can also set it in **Project → Settings →
-   Build and Deployment → Node.js Version → 20.x**.
+2. **Node 20.x is recommended** (`package.json` pins `engines.node: "20.x"`).
+   The Chromium shared-library issue (`libnss3.so` / `libnspr4.so`) is handled
+   automatically in code: `lib/browser.js` sets `AWS_LAMBDA_JS_RUNTIME=nodejs20.x`
+   before importing `@sparticuz/chromium`, which is what makes the package extract
+   its Amazon Linux 2023 libraries and set `LD_LIBRARY_PATH`. (Vercel doesn't set
+   that variable itself, which is why Chromium otherwise can't find its libraries.)
 3. Add environment variables under **Project → Settings → Environment Variables**:
    - `OPENAI_API_KEY` — **required for the AI review** (the auto checks run without it).
    - `OPENAI_MODEL` — *optional*, defaults to `gpt-4o` (any vision-capable model, e.g. `gpt-4o-mini`).
