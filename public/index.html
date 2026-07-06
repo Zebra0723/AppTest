@@ -293,7 +293,7 @@ Contact form that submits"></textarea>
   <footer>
     Built to test Vercel deployments · runs a real headless Chromium on a Vercel function.<br/>
     AI review uses a free <code>GEMINI_API_KEY</code> (Google AI Studio), or <code>GROQ_API_KEY</code> / <code>OPENAI_API_KEY</code> — set in Project → Settings → Environment Variables.
-    <div id="build" style="margin-top:10px; opacity:.85; font-variant-numeric:tabular-nums">VercelCheck v1.4.7</div>
+    <div id="build" style="margin-top:10px; opacity:.85; font-variant-numeric:tabular-nums">VercelCheck v1.4.8</div>
   </footer>
 </div>
 
@@ -312,7 +312,7 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 });
 
 // build/version stamp — pulls the live deploy's commit from the server (never cached)
-const UI_VERSION = '1.4.7';
+const UI_VERSION = '1.4.8';
 fetch('/api/version', {cache:'no-store'}).then(r=>r.json()).then(v=>{
   const el=document.getElementById('build'); if(!el) return;
   const uiMatch = v.version === UI_VERSION;
@@ -397,6 +397,9 @@ function render(d){
       <div><b>${ok?'Signed in':'Login not confirmed'}</b> — ${esc(d.login.detail)}
       ${ok?'':'<div class="det" style="margin-top:4px">The checks below ran against whatever page was showing — likely the login screen.</div>'}</div></div></div>`;
   }
+
+  // Plain-English summary (the headline — everything below is detail)
+  h += plainSummary(d);
 
   // Hero
   h += `<div class="card section">${heroHtml(rep,m)}</div>`;
@@ -504,6 +507,61 @@ function heroHtml(rep,m){
       </div></div></div>`;
 }
 function normAi(s){ s=(s||'').toLowerCase(); if(s==='present'||s==='pass')return 'pass'; if(s==='partial'||s==='warn')return 'warn'; if(['missing','broken','fail'].includes(s))return 'fail'; return 'info'; }
+
+// Plain-language explanations for the technical check labels.
+const FRIENDLY = {
+  'Horizontal overflow':'The page scrolls sideways — it looks squished or broken, especially on phones.',
+  'Broken images':'One or more images didn’t load.',
+  'Responsive meta tag':'The page isn’t set up to resize for phones.',
+  'Console errors':'The page is throwing JavaScript errors in the background.',
+  'Uncaught exceptions':'The page’s code crashed somewhere (JavaScript errors).',
+  'Hydration / render errors':'The app had errors while rendering (common React/Next.js issue).',
+  'Broken resources':'Some files or data the page needs failed to load (404/500).',
+  'Failed requests':'Some network requests failed to load.',
+  'Stuck loaders / skeletons':'A loading spinner never went away — something may be stuck loading.',
+  'Rendered content':'The page came up almost blank.',
+  'HTTP response':'The server returned an error instead of the page.',
+  'Load time':'The page was slow to load.',
+};
+function friendly(c){ return FRIENDLY[c.label] || c.detail; }
+
+function plainSummary(d){
+  const rep=d.report, s=rep.score;
+  let head, sub;
+  if(!d.reachable){ head='🔴 The site didn’t load.'; sub='I couldn’t open the page, so nothing else could be checked.'; }
+  else if(s>=90){ head='🟢 Looks great.'; sub='No major problems found.'; }
+  else if(s>=75){ head='🟢 Mostly good.'; sub='Just a few small things to look at.'; }
+  else if(s>=55){ head='🟡 Working, but needs attention.'; sub='Some real issues to fix.'; }
+  else if(s>=35){ head='🟠 Several problems.'; sub='A number of things look broken.'; }
+  else { head='🔴 Serious problems.'; sub='The page has significant issues.'; }
+
+  // What you asked me to check
+  const feats=d.features||[]; const aiMap={};
+  if(d.ai&&d.ai.available)(d.ai.feature_verdicts||[]).forEach(v=>{ aiMap[(v.feature||'').trim().toLowerCase()]=v; });
+  let featHtml='';
+  if(feats.length){
+    const items=feats.map(f=>{
+      const v=aiMap[f.feature.trim().toLowerCase()];
+      const st=v?normAi(v.status):f.status;
+      const w=st==='pass'?'found':st==='warn'?'maybe there':'not found';
+      return `<div class="rowitem" style="padding:8px 2px">${dot(st,18)}<div><b>${esc(f.feature)}</b> — ${w}</div></div>`;
+    }).join('');
+    featHtml=`<div style="margin-top:14px"><div class="mini" style="margin-bottom:5px">WHAT YOU ASKED ME TO CHECK</div>${items}</div>`;
+  }
+
+  // Biggest things to fix
+  const fails=rep.checks.filter(c=>c.status==='fail');
+  let issuesHtml='';
+  if(fails.length){
+    const items=fails.slice(0,4).map(c=>`<div class="rowitem" style="padding:8px 2px">${dot('fail',18)}<div>${esc(friendly(c))}</div></div>`).join('');
+    issuesHtml=`<div style="margin-top:14px"><div class="mini" style="margin-bottom:5px">BIGGEST THINGS TO FIX</div>${items}</div>`;
+  } else if(d.reachable){
+    issuesHtml=`<div class="hint" style="margin-top:12px">👍 No major bugs in the automatic checks.</div>`;
+  }
+
+  return `<div class="card section"><div class="verdict" style="font-size:1.25rem">${head}</div>`+
+         `<div class="verdict-sub">${sub}</div>${featHtml}${issuesHtml}</div>`;
+}
 </script>
 </body>
 </html>
