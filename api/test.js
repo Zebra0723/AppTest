@@ -64,11 +64,11 @@ export default async function handler(req, res) {
     const audit = await runAudit({ url, features, viewports, waitExtraMs: settleMs, auth });
     const report = grade(audit);
 
-    let ai = { available: false, reason: 'AI review not run.' };
-    if (audit.reachable && aiConfigured()) {
+    // aiReview() returns a helpful reason when no key is configured, so just
+    // call it whenever the page loaded.
+    let ai = { available: false, reason: 'AI review not run (page did not load).' };
+    if (audit.reachable) {
       ai = await aiReview(audit, features);
-    } else if (!aiConfigured()) {
-      ai = { available: false, reason: 'No OPENAI_API_KEY set in the Vercel environment.' };
     }
 
     // Convert screenshots to data URLs for the client and drop raw text weight.
