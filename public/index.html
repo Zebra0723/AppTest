@@ -278,7 +278,7 @@ Contact form that submits"></textarea>
     </div>
 
     <button class="run" id="run">Run test&nbsp; ▸</button>
-    <div class="aihint"><span class="spark">✨</span><span id="aiHint">AI review runs automatically when an AI key is set in your Vercel environment — use a <b>free</b> <code>GEMINI_API_KEY</code> from Google AI Studio (no billing).</span></div>
+    <div class="aihint"><span class="spark">✨</span><span id="aiHint">AI review runs automatically when an AI key is set in your Vercel environment — use a <b>free</b> <code>GROQ_API_KEY</code> from console.groq.com/keys (no billing).</span></div>
   </div>
 
   <!-- LOADING -->
@@ -292,8 +292,8 @@ Contact form that submits"></textarea>
 
   <footer>
     Built to test Vercel deployments · runs a real headless Chromium on a Vercel function.<br/>
-    AI review uses a free <code>GEMINI_API_KEY</code> (Google AI Studio), or <code>GROQ_API_KEY</code> / <code>OPENAI_API_KEY</code> — set in Project → Settings → Environment Variables.
-    <div id="build" style="margin-top:10px; opacity:.85; font-variant-numeric:tabular-nums">VercelCheck v1.4.9</div>
+    AI review uses a free <code>GROQ_API_KEY</code> (console.groq.com/keys), or <code>GEMINI_API_KEY</code> / <code>OPENAI_API_KEY</code> — set in Project → Settings → Environment Variables.
+    <div id="build" style="margin-top:10px; opacity:.85; font-variant-numeric:tabular-nums">VercelCheck v1.5.0</div>
   </footer>
 </div>
 
@@ -312,7 +312,7 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 });
 
 // build/version stamp — pulls the live deploy's commit from the server (never cached)
-const UI_VERSION = '1.4.9';
+const UI_VERSION = '1.5.0';
 fetch('/api/version', {cache:'no-store'}).then(r=>r.json()).then(v=>{
   const el=document.getElementById('build'); if(!el) return;
   const uiMatch = v.version === UI_VERSION;
