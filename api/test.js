@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   if (!names.length) names = ['Desktop', 'Mobile'];
   const viewports = names.map((n) => VIEWPORT_PRESETS[n]);
 
-  const settleMs = clamp(parseInt(body.settleMs, 10) || 2500, 500, 8000);
+  const settleMs = clamp(parseInt(body.settleMs, 10) || 3500, 500, 12000);
 
   // Optional automated form login.
   let auth = null;
